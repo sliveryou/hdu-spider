@@ -13,8 +13,6 @@ from selectCourses import select_courses
 from decorate import decorate, judge
 
 if __name__ == '__main__':
-    #number = 16198709
-    #pwd = '1215299941GF1'
     print('(๑•̀ㅂ•́)و✧准备进入数字杭电...')
     number = int(input('请输入学号：'))
     pwd = getpass.getpass('请输入密码（密码不回显）：')
