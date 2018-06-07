@@ -18,9 +18,9 @@ def system_login(number, pwd):
     - number: 学号。
     - pwd: 密码。
     '''
-    s.cookies = Cookie() # 初始化LWPCookieJar
+    s.cookies = Cookie() # 初始化 LWPCookieJar
     try:
-        html = s.get("http://cas.hdu.edu.cn/cas/login", headers=headers, timeout=5)
+        html = s.get("http://cas.hdu.edu.cn/cas/login", headers=headers, timeout=4)
     except RequestException:
         print("请求超时！请检查网络后再次尝试！")
         sys.exit(1)
@@ -32,8 +32,8 @@ def system_login(number, pwd):
         'serviceName': 'null',
         'loginErrCnt': '0',
         'username': str(number),
-        'password': hashlib.md5(pwd.encode('utf-8')).hexdigest(),  # 密码要经过md5加密后提交
-        'lt': bs(html.text).select('input[name="lt"]')[0]['value']  # lt是一个不断改变的值，所以需要在网页中获取它的值
+        'password': hashlib.md5(pwd.encode('utf-8')).hexdigest(),  # 密码要经过 md5 哈希后提交
+        'lt': bs(html.text).select('input[name="lt"]')[0]['value']  # lt 是一个不断改变的值，所以需要在网页中获取它的值
     }
 
     # 数字杭电网页版登录
@@ -50,6 +50,15 @@ def system_login(number, pwd):
     html = s.get('http://cas.hdu.edu.cn/cas/login?service=http://jxgl.hdu.edu.cn/default.aspx')
     url = re.search(r'<a href="(.*)">', html.text)
     s.get(url.group(1), headers=headers)
-    s.get('http://jxgl.hdu.edu.cn/xs_main.aspx?xh={0}'.format(number))
-    s.cookies.save('cookies.txt', ignore_discard=True, ignore_expires=True) # 将cookies存储到本地
-    print('登录成功！')
+
+    # 获取姓名
+    try:
+        html = s.get('http://jxgl.hdu.edu.cn/xs_main.aspx?xh={0}'.format(number))
+        name = bs(html.text[2000:4000]).select('div[class="info"] ul li em span')[0].text
+        s.cookies.save('cookies.txt', ignore_discard=True, ignore_expires=True) # 将 cookies 存储到本地
+        print('登录成功！')
+    except:
+        print("密码错误！请尝试重新登录！")
+        sys.exit(1)
+
+    return name[:-2]

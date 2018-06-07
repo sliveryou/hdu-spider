@@ -7,23 +7,26 @@ from functools import partial
 
 import requests
 from bs4 import BeautifulSoup
-
 from prettytable import PrettyTable as pt
 
-from tools import s, headers, enter, load_cookies, calculate_gpa
+from tools import s, headers, enter, load_cookies, calculate_gpa, Person
 
 bs = partial(BeautifulSoup, features='lxml')
 
-def get_report_card(number, year, term):
+
+def get_report_card(year, term):
     '''
     进入成绩页面并打印成绩单，包括分数，GPA等。
-    - number: 学号。
     - year: 查询学年。如 '2017-2018'.
     - term: 查询学期。如 '2'。
     '''
     load_cookies()
+
+    number = Person.number
+    nameEncoded = Person.getNameEncoded('utf8')
+
     print("正在进入选课系统成绩页面...") 
-    r = enter('http://jxgl.hdu.edu.cn/xscjcx_dq.aspx?xh={0}&xm=%B3%C2%BD%A1&gnmkdm=N121605', number)
+    r = enter('http://jxgl.hdu.edu.cn/xscjcx_dq.aspx?xh={0}&xm={1}&gnmkdm=N121605')
     print("开始爬取成绩单...") 
 
     data = {
@@ -36,15 +39,19 @@ def get_report_card(number, year, term):
         'ddlxq': term,
         'btnCx': ' 查  询 '
     }
-    r = s.post('http://jxgl.hdu.edu.cn/xscjcx_dq.aspx?xh={0}&xm=%u9648%u5065&gnmkdm=N121605'.format(number), data=data, headers=headers)
+    r = s.post('http://jxgl.hdu.edu.cn/xscjcx_dq.aspx?xh={0}&xm={1}&gnmkdm=N121605'.format(number, nameEncoded), data=data, headers=headers)
     s.cookies.save('cookies.txt', ignore_discard=True, ignore_expires=True)
 
-    # 初始化
+    show_table(r.text, year, term)
+        
+
+def show_table(html, year, term):
+    '''打印指定学年和学期的成绩单。'''
     credit, sum, credit_notc, sum_notc = 0, 0, 0, 0  # 初始化学分、绩点、去 C 类课学分和去 C 类课绩点
     table = pt(["课程代码", "课程名称", "课程性质", "课程归属", "学分", "成绩", "补考成绩", "是否重修", "开课学院", "备注", "补考备注", "单科绩点"])  # 初始化表头
     Fail = []  # 初始化补考列表
 
-    for tr in bs(r.text).find_all('tr')[4:]:
+    for tr in bs(html).find_all('tr')[4:]:
         td = tr.find_all('td')
         L = [ str(x) for x in td[2:] ]
         datas = []
@@ -99,3 +106,4 @@ def get_report_card(number, year, term):
 
         print("补考后本学期平均学分绩点为（含c类课）：{0}".format(sum / credit))
         print("补考后本学期平均学分绩点为（不含c类课）：{0}".format(sum_notc / credit_notc))
+        

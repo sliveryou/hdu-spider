@@ -11,13 +11,21 @@ from getReportCard import get_report_card
 from coursesGetAndGuess import courses_get
 from selectCourses import select_courses
 from decorate import decorate, judge
+from tools import Person
+
 
 if __name__ == '__main__':
     print('(๑•̀ㅂ•́)و✧准备进入数字杭电...')
-    number = int(input('请输入学号：'))
-    pwd = getpass.getpass('请输入密码（密码不回显）：')
+    # number = int(input('请输入学号：'))
+    # pwd = getpass.getpass('请输入密码（密码不回显）：')
+    number = 16198709
+    pwd = '76013716GF1'
     print('登录中...')
-    system_login(number, pwd)
+    name = system_login(number, pwd)
+    print('你好，{} :）'.format(name))
+
+    Person.setName(name)
+    Person.setNumber(number)
 
     while(True):
         print('\n>>>>>>>>>功能目录<<<<<<<<<\n')
@@ -32,12 +40,12 @@ if __name__ == '__main__':
 
         choice = judge(choice, 5)
         if choice == 1:
-            decorate(get_test_deatil, number)
+            decorate(get_test_deatil)
         elif choice == 2:
-            decorate(get_report_card, number)
+            decorate(get_report_card)
         elif choice == 3:
-            decorate(courses_get, number, quit=False)
+            decorate(courses_get, quit=False)
         elif choice == 4:
-            select_courses(number)
+            select_courses()
         elif choice == 5:
             break

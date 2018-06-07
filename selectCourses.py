@@ -11,13 +11,14 @@ import requests
 from bs4 import BeautifulSoup
 from prettytable import PrettyTable as pt
 
-from tools import s, headers, enter, load_cookies, download_idcode, image_read
+from tools import s, headers, enter, load_cookies, download_idcode, image_read, Person
 from decorate import judge
 
 bs = partial(BeautifulSoup, features='lxml')
 
 hidXNXQ = '2017-20182' # 如果现在是 2017-2018 年度第1学期，这时候要选的课是下一个学期的课，所以学期应为第2学期，即 '2017-20182'
                        # 如果现在是 2017-2018 年度第2学期，这时候要选的课是下一个学年下一个学期，应为 '2018-20191'，以此类推
+
 
 def look_courses(html):
     '''
@@ -26,6 +27,7 @@ def look_courses(html):
     '''
     table = bs(html).find_all('table', class_='datelist')[1]
     table_has = None
+
     for i, tr in enumerate(table.find_all('tr')):
         td = tr.find_all('td')
         L = [ x.get_text() for x in td ]
@@ -33,14 +35,20 @@ def look_courses(html):
             table_has = pt(['课程编号'] + L[:-1])
         else:
             table_has.add_row([i-1] + L[:-1])
+
     print('已选课程如下所示：')
     print(table_has)
 
 
-def get_select_page(number):
-    '''进入选课页面，返回此时的 Session 对象 和 Response 对象。'''
+def get_select_page(number, nameEncoded):
+    '''
+    进入选课页面，返回此时的 Session 对象 和 Response 对象。
+    - number: 学号。
+    - nameEncoded: 编码过后的姓名。
+    '''
     load_cookies()
-    r = enter('http://jxgl.hdu.edu.cn/xf_xsqxxxk.aspx?xh={0}&xm=%B3%C2%BD%A1&gnmkdm=N121113', number, prompt=False)
+
+    r = enter('http://jxgl.hdu.edu.cn/xf_xsqxxxk.aspx?xh={0}&xm={1}&gnmkdm=N121113', prompt=False)
 
     data = {
         '__EVENTTARGET': 'ddl_kcgs',
@@ -49,30 +57,32 @@ def get_select_page(number):
         '__VIEWSTATE': bs(r.text).select('input[name="__VIEWSTATE"]')[0]['value'],
         '__EVENTVALIDATION': bs(r.text).select('input[name="__EVENTVALIDATION"]')[0]['value'],
         'ddl_kcxz': '',	
-        'ddl_ywyl': '有'.encode('gbk'),
+        'ddl_ywyl': '有'.encode('gb2312'),
         'ddl_kcgs': '',	
         'ddl_xqbs': '1',
         'ddl_sksj': '',	
         'TextBox1': '',
-        'Button2': '确定'.encode('gbk'),	
+        'Button2': '确定'.encode('gb2312'),	
         'txtYz': '',	
         'hidXNXQ': hidXNXQ
     }
 
-    r = s.post('http://jxgl.hdu.edu.cn/xf_xsqxxxk.aspx?xh={0}&xm=%u9648%u5065&gnmkdm=N121113'.format(number), data=data, headers=headers)    
+    r = s.post('http://jxgl.hdu.edu.cn/xf_xsqxxxk.aspx?xh={0}&xm={1}&gnmkdm=N121113'.format(number, nameEncoded), data=data, headers=headers)    
     return s, r
 
 
-def go_to_select(number, xk, s, r):
+def go_to_select(xk, s, r):
     '''
     提交表单，完成选课。
-    - number: 学号。
     - xk: 选课编号。
     - s: Session 对象。
     - r: Response 对象。
 
     - return: s, r, result: 提交表单后的 Session 对象, 提交表单后的 Response 对象和验证码校验结果。
     '''
+    number = Person.number
+    nameEncoded = Person.getNameEncoded('utf8')
+
     download_idcode('http://jxgl.hdu.edu.cn/CheckCode.aspx')  # 下载验证码
     idcode = image_read()  # 返回验证码识别结果
     print("识别结果为：", idcode, '\n',sep='')
@@ -84,19 +94,19 @@ def go_to_select(number, xk, s, r):
         '__VIEWSTATE': bs(r.text).select('input[name="__VIEWSTATE"]')[0]['value'],
         '__EVENTVALIDATION': bs(r.text).select('input[name="__EVENTVALIDATION"]')[0]['value'],
         'ddl_kcxz': '',	
-        'ddl_ywyl': '有'.encode('gbk'),
+        'ddl_ywyl': '有'.encode('gb2312'),
         'ddl_kcgs': '',	
         'ddl_xqbs': '1',
         'ddl_sksj': '',	
         'TextBox1': '',
         xk: 'on',	
         'txtYz': idcode,	
-        'Button1': '  提交  '.encode('gbk'),
+        'Button1': '  提交  '.encode('gb2312'),
         'hidXNXQ': hidXNXQ
     }
 
     s.cookies.load('cookies.txt', ignore_discard=True, ignore_expires=True)
-    r = s.post('http://jxgl.hdu.edu.cn/xf_xsqxxxk.aspx?xh={0}&xm=%u9648%u5065&gnmkdm=N121113'.format(number), data=data, headers=headers)
+    r = s.post('http://jxgl.hdu.edu.cn/xf_xsqxxxk.aspx?xh={0}&xm={1}&gnmkdm=N121113'.format(number, nameEncoded), data=data, headers=headers)
 
     try:
         result = re.search(".*?alert\('(.*?)！！.*?", r.text[:50], re.S).group(1) # 查看是否有 alert 提醒，如果有返回值，说明验证码校验失败
@@ -108,13 +118,15 @@ def go_to_select(number, xk, s, r):
     return s, r, result
 
 
-def select_courses(number):
+def select_courses():
     '''
     进入选课页面，进行选课操作。
-    - number: 学号。
     '''
+    number = Person.number
+    nameEncoded = Person.getNameEncoded('utf8')
+    
     print("正在进入选课页面...") 
-    s, r = get_select_page(number)
+    s, r = get_select_page(number, nameEncoded)
     print("开始爬取选课信息...") 
 
     table = pt(["编号", "课程名称", "课程代码", "教师姓名", "上课时间", "学分", "起始结束周", "容量", "余量", "课程归属", "课程性质"])
@@ -163,12 +175,12 @@ def select_courses(number):
                 xk =  'kcmcGrid$ctl0{}$xk'.format(num+2)
             elif 8 <= num < i:
                 xk =  'kcmcGrid$ctl{}$xk'.format(num+2)
-            s, r, result = go_to_select(number, xk, s, r)
+            s, r, result = go_to_select(xk, s, r)
 
             while result == '验证码不正确':
                 print('验证码校验失败！正在重新提交...')
-                s, r = get_select_page(number)
-                s, r, result = go_to_select(number, xk, s, r)
+                s, r = get_select_page(number, nameEncoded)
+                s, r, result = go_to_select(xk, s, r)
 
             print('φ(≧ω≦*)♪选课中...')
             print('......')
@@ -213,7 +225,7 @@ def select_courses(number):
                 '__VIEWSTATE': bs(r.text).select('input[name="__VIEWSTATE"]')[0]['value'],
                 '__EVENTVALIDATION': bs(r.text).select('input[name="__EVENTVALIDATION"]')[0]['value'],
                 'ddl_kcxz': '',	
-                'ddl_ywyl': '有'.encode('gbk'),
+                'ddl_ywyl': '有'.encode('gb2312'),
                 'ddl_kcgs': '',	
                 'ddl_xqbs': '1',
                 'ddl_sksj': '',	
@@ -222,7 +234,7 @@ def select_courses(number):
                 'hidXNXQ': hidXNXQ
             }
 
-            r = s.post('http://jxgl.hdu.edu.cn/xf_xsqxxxk.aspx?xh={0}&xm=%u9648%u5065&gnmkdm=N121113'.format(number), data=data, headers=headers)
+            r = s.post('http://jxgl.hdu.edu.cn/xf_xsqxxxk.aspx?xh={0}&xm={1}&gnmkdm=N121113'.format(number, nameEncoded), data=data, headers=headers)
 
             print('\nφ(≧ω≦*)♪退课中...')
             print('......')

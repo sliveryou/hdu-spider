@@ -11,21 +11,24 @@ import requests
 from bs4 import BeautifulSoup
 from prettytable import PrettyTable as pt
 
-from tools import s, headers, enter, load_cookies, calculate_gpa
+from tools import s, headers, enter, load_cookies, calculate_gpa, Person
 from decorate import judge
 
 bs = partial(BeautifulSoup, features='lxml')
 
-def courses_get(number, year, term):
+def courses_get(year, term):
     '''
     获取本学期所有已选课程，并将其写入 courses_results.txt 文件
-    - number: 学号。
     - year: 查询学年。如 '2017-2018'.
     - term: 查询学期。如 '2'。
     '''
     load_cookies()
+
+    number = Person.number
+    nameEncoded = Person.getNameEncoded('utf8')
+
     print("正在进入选课情况查询页面...") 
-    r = enter('http://jxgl.hdu.edu.cn/xsxkqk.aspx?xh={0}&xm=%B3%C2%BD%A1&gnmkdm=N121115', number)
+    r = enter('http://jxgl.hdu.edu.cn/xsxkqk.aspx?xh={0}&xm={1}&gnmkdm=N121115')
     print("开始爬取选课情况信息...") 
 
     data = {
@@ -37,7 +40,7 @@ def courses_get(number, year, term):
         'ddlXN': year,
         'ddlXQ': term
     }
-    r = s.post('http://jxgl.hdu.edu.cn/xsxkqk.aspx?xh={0}&xm=%u9648%u5065&gnmkdm=N121115'.format(number), data=data, headers=headers)
+    r = s.post('http://jxgl.hdu.edu.cn/xsxkqk.aspx?xh={0}&xm={1}&gnmkdm=N121115'.format(number, nameEncoded), data=data, headers=headers)
 
     table = pt(['选课课号', '课程名称', '教师姓名', '学分', '上课时间'])
     courses_results = []
@@ -128,3 +131,4 @@ def courses_guess():
         print("本学期所修学分为（不含c类课）：{0}".format(credit_notc))
         print("本学期平均学分绩点为（含c类课）：{0}".format(sum / credit))
         print("本学期平均学分绩点为（不含c类课）：{0}".format(sum_notc / credit_notc))
+        
