@@ -16,10 +16,8 @@ from tools import Person
 
 if __name__ == '__main__':
     print('(๑•̀ㅂ•́)و✧准备进入数字杭电...')
-    # number = int(input('请输入学号：'))
-    # pwd = getpass.getpass('请输入密码（密码不回显）：')
-    number = 16198709
-    pwd = '76013716GF1'
+    number = int(input('请输入学号：'))
+    pwd = getpass.getpass('请输入密码（密码不回显）：')
     print('登录中...')
     name = system_login(number, pwd)
     print('你好，{} :）'.format(name))
